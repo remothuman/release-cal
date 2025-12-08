@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { sqliteTable, integer, text, blob, index, primaryKey } from "drizzle-orm/sqlite-core";
+import { z } from "zod";
 
 const timestamps = {
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -25,7 +26,7 @@ export const myTable = sqliteTable("myTable", {
 type SubscriptionGroupData = any
 
 export const subscriptionGroups = sqliteTable("subscription_groups", {
-    id: text("id").primaryKey(), // sometimes equal to userId
+    id: text("id").primaryKey().$default(() => crypto.randomUUID()), // sometimes equal to userId
     ...timestamps,
 
     data: text({ mode: "json" }).$type<SubscriptionGroupData>().notNull(),
@@ -33,7 +34,7 @@ export const subscriptionGroups = sqliteTable("subscription_groups", {
 
 
 export const subscription = sqliteTable("subscription", {
-    id: text("id").primaryKey(),
+    id: text("id").primaryKey().$default(() => crypto.randomUUID()),
     ...timestamps,
     
     data: text({ mode: "json" }).$type<any>().notNull(),
@@ -44,6 +45,9 @@ export const subscription = sqliteTable("subscription", {
     sourceId: text(), // eg tmdbId, imdbId, etc
     
 }); 
+
+
+
 
 // join table for subscription groups and subscriptions
 export const subscriptionGroupSubscriptions = sqliteTable("subscription_group_subscriptions", {

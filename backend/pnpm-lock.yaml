@@ -11,6 +11,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.6
         version: 1.19.6(hono@4.10.7)
+      '@hono/zod-validator':
+        specifier: ^0.7.5
+        version: 0.7.5(hono@4.10.7)(zod@4.1.13)
       better-auth:
         specifier: ^1.4.5
         version: 1.4.5
@@ -20,12 +23,18 @@ importers:
       drizzle-orm:
         specifier: ^0.45.0
         version: 0.45.0(better-sqlite3@12.5.0)(kysely@0.28.8)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.0(better-sqlite3@12.5.0)(kysely@0.28.8))(zod@4.1.13)
       esbuild:
         specifier: ^0.27.1
         version: 0.27.1
       hono:
         specifier: ^4.10.7
         version: 4.10.7
+      zod:
+        specifier: ^4.1.13
+        version: 4.1.13
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
@@ -524,6 +533,12 @@ packages:
     peerDependencies:
       hono: ^4
 
+  '@hono/zod-validator@0.7.5':
+    resolution: {integrity: sha512-n4l4hutkfYU07PzRUHBOVzUEn38VSfrh+UVE5d0w4lyfWDOEhzxIupqo5iakRiJL44c3vTuFJBvcmUl8b9agIA==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.25.0 || ^4.0.0
+
   '@noble/ciphers@2.0.1':
     resolution: {integrity: sha512-xHK3XHPUW8DTAobU+G0XT+/w+JLM7/8k1UFdB5xg/zTFPnFCobhftzw8wl4Lw2aq/Rvir5pxfZV5fEazmeCJ2g==}
     engines: {node: '>= 20.19.0'}
@@ -723,6 +738,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  drizzle-zod@0.8.3:
+    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: ^3.25.0 || ^4.0.0
 
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
@@ -1160,6 +1181,11 @@ snapshots:
     dependencies:
       hono: 4.10.7
 
+  '@hono/zod-validator@0.7.5(hono@4.10.7)(zod@4.1.13)':
+    dependencies:
+      hono: 4.10.7
+      zod: 4.1.13
+
   '@noble/ciphers@2.0.1': {}
 
   '@noble/hashes@2.0.1': {}
@@ -1250,6 +1276,11 @@ snapshots:
     optionalDependencies:
       better-sqlite3: 12.5.0
       kysely: 0.28.8
+
+  drizzle-zod@0.8.3(drizzle-orm@0.45.0(better-sqlite3@12.5.0)(kysely@0.28.8))(zod@4.1.13):
+    dependencies:
+      drizzle-orm: 0.45.0(better-sqlite3@12.5.0)(kysely@0.28.8)
+      zod: 4.1.13
 
   end-of-stream@1.4.5:
     dependencies:

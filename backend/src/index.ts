@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { auth } from "./auth";
 import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
-import { api } from "./main-api";
+import api from "./main-api";
 const app = new Hono();
 
 app.use(
