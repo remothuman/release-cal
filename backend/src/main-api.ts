@@ -20,7 +20,9 @@ async function getSessionData(c: Context, errorOnNoSession: boolean = false) {
     });
 
     if (errorOnNoSession && !session) {
+        console.log(session, c.req.raw.headers);
         throw new Error("Not logged in");
+        // todo: make this middleware so it can return to user a 401 
     }
 
     return session;
@@ -62,8 +64,32 @@ async function getUserSubscriptionGroup(userId: string) {
 
 api.get("/me/subscriptions", async (c) => {
     const session = await getSessionData(c, true);
-    const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
-    return c.json(subscriptionGroup);
+    const mySubscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
+    
+    
+    const subscriptions = await db
+        // .select({
+        //     id: subscription.id,
+        //     name: subscription.name,
+        //     description: subscription.description,
+        //     defaultLink: subscription.defaultLink,
+        //     type: subscription.type,
+        //     sourceId: subscription.sourceId,
+        //     data: subscription.data,
+        // })
+        .select()
+        .from(subscription)
+        .innerJoin(
+            subscriptionGroupSubscriptions,
+            eq(subscription.id, subscriptionGroupSubscriptions.subscriptionId)
+        ).where(
+            eq(subscriptionGroupSubscriptions.subscriptionGroupId, mySubscriptionGroup.id)
+        )
+    const sub2 = subscriptions.map(row => row.subscription)
+    
+    
+    
+    return c.json(sub2);
 });
 
 api.post(

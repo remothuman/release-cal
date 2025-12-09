@@ -25,6 +25,7 @@ export const myTable = sqliteTable("myTable", {
 
 type SubscriptionGroupData = any
 
+// maybe rename to something like subscriptionCollections
 export const subscriptionGroups = sqliteTable("subscription_groups", {
     id: text("id").primaryKey().$default(() => crypto.randomUUID()), // sometimes equal to userId
     ...timestamps,
@@ -56,6 +57,7 @@ export const subscriptionGroupSubscriptions = sqliteTable("subscription_group_su
 }, (table) => [
     primaryKey({ columns: [table.subscriptionGroupId, table.subscriptionId] }),
 ]);
+// todo foreign key definition maybe
 
 
 
@@ -80,3 +82,4 @@ export const events = sqliteTable("events", {
 
 
 // todo: define drizzle relations helper (might require drizzle-1.0)
+// this also enables cleaner many-many select function

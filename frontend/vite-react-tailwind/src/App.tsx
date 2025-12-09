@@ -1,6 +1,7 @@
 import { authClient } from "./api";
 import { useState } from "react";
-
+import Subscriptions from "./Subscriptions";
+  
 export default function App() {
   const { data: session, isPending, error, refetch } = authClient.useSession();
   console.log(session);
@@ -12,7 +13,7 @@ export default function App() {
     : "Signed Out";
 
   return (
-    <div className="mx-auto max-w-xl w-full">
+    <div className="mx-auto max-w-xl w-full p-2">
       <h1 className="mb-4">Hello {session?.user?.name || "World"}</h1>
       {signInStatus === "Signed Out" && (
         <>
@@ -25,6 +26,9 @@ export default function App() {
       )}
       {signInStatus === "Signed In" && <SignOutButton />}
       {/* TODO: add the SSO, probably replace the signIn and Up with one thing */}
+      {/* ------ */}
+      <div className="mt-4"></div>
+      <Subscriptions />
     </div>
   );
 }
@@ -32,6 +36,7 @@ export default function App() {
 function SignOutButton() {
   return (
     <button
+      className="my-button"
       onClick={() => {
         authClient.signOut();
       }}
@@ -135,15 +140,15 @@ function SignUpOrIn(props: { onSuccess: () => void }) {
         onChange={handleChange}
       />
       <div className="flex gap-2">
-        <button type="submit" onClick={signUpEmail}>
+        <button className="my-button" type="submit" onClick={signUpEmail}>
           Sign Up
         </button>
-        <button type="submit" onClick={signInEmail}>
+        <button className="my-button" type="submit" onClick={signInEmail}>
           Sign In
         </button>
       </div>
 
-      <button type="submit" onClick={signInWithGitHub}>
+      <button className="my-button" type="submit" onClick={signInWithGitHub}>
         Continue with GitHub
       </button>
     </form>

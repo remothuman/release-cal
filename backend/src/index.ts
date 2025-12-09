@@ -25,6 +25,17 @@ app.use(
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
+app.use(
+    '/api/*',
+    cors({
+        origin: "http://localhost:5173",
+        allowHeaders: ["Content-Type", "Authorization"],
+        allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE", "PATCH"],
+        exposeHeaders: ["Content-Length"],
+        maxAge: 600,
+        credentials: true,
+    })
+);
 
 app.route('/api/', api)
 
