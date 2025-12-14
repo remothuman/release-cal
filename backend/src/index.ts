@@ -5,9 +5,10 @@ import { auth } from "./auth";
 import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import api from "./main/main-api";
-const app = new Hono();
 
-app.use(
+const app = new Hono()
+
+.use(
     '/api/auth/*',
     // cors({
     //     origin: "http://localhost:5173",
@@ -21,11 +22,10 @@ app.use(
 		maxAge: 600,
 		credentials: true,  
     })
-);
+)
 
-app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
-app.use(
+.use(
     '/api/*',
     cors({
         origin: "http://localhost:5173",
@@ -35,9 +35,11 @@ app.use(
         maxAge: 600,
         credentials: true,
     })
-);
+)
 
-app.route('/api/', api)
+.route('/api/', api)
+
+app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw))
 
 serve(app)
 

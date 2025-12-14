@@ -13,7 +13,7 @@ import { z } from "zod";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { getTmdbShowData } from "./tmdb";
 
-const api = new Hono();
+
 
 async function getSessionData(c: Context, errorOnNoSession: boolean = false) {
     const session = await auth.api.getSession({
@@ -61,7 +61,8 @@ async function getUserSubscriptionGroup(userId: string) {
     return subscriptionGroup[0];
 }
 
-api.get("/me/subscriptions", async (c) => {
+const api = new Hono()
+.get("/me/subscriptions", async (c) => {
     const session = await getSessionData(c, false);
     if (!session) {
         return c.json({ error: "Not logged in" }, 401);
@@ -83,9 +84,9 @@ api.get("/me/subscriptions", async (c) => {
     
     
     return c.json(sub2);
-});
+})
 
-api.post(
+.post(
     "/me/subscribeNewSubscription",
     zValidator("json", createInsertSchema(channels)),
     async (c) => {
@@ -111,10 +112,10 @@ api.post(
 
         return c.json(newRelation[0]);
     }
-);
+)
 
 // MAYBE keep
-api.post(
+.post(
     "/me/subscribeExistingSubscription",
     zValidator("json", z.object({ subscriptionId: z.string() })),
     async (c) => {
@@ -133,11 +134,11 @@ api.post(
 
         return c.json(newRelation[0]);
     }
-);
+)
 
 
 
-api.post(
+.post(
     "/me/subscribeTmdbShow",
     zValidator("json", z.object({ tmdbId: z.number() })),
     async (c) => {
@@ -156,6 +157,6 @@ api.post(
         
         // insert new subscription
     }
-);
+)
 
 export default api;

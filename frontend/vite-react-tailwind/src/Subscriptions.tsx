@@ -1,6 +1,7 @@
 // import { useQuery } from '@tanstack/react-query'
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { api } from "./api"
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -11,11 +12,13 @@ export default function Subscriptions() {
     const queryClient = useQueryClient()
     const { data: subscriptions, isLoading, error } = useQuery({
         queryKey: ['subscriptions'],
-        queryFn: () => {
-            return fetch(`${BASE_URL}/api/me/subscriptions`, {
-                credentials: 'include'
-            }).then(res => res.json())
-            // .then(data => data.data.subscriptions)
+        queryFn: async () => {
+            const res = await api.me.subscriptions.$get()
+            if (!res.ok) {
+                const errorText = await res.text().catch(() => res.statusText)
+                throw new Error(`Failed to fetch subscriptions: ${res.status} ${errorText}`)
+            }
+            return res.json()
         }
     })
     return (
@@ -30,21 +33,17 @@ export default function Subscriptions() {
                 Invalidate
             </button>
             <button className="my-button-2" onClick={() => {
-                fetch(`${BASE_URL}/api/me/subscribeNewSubscription`, {
-                    credentials: 'include',
-                    method: 'POST',
-                    body: JSON.stringify({ 
+                api.me.subscribeNewSubscription.$post({
+                    json: {
                         type: 'tv-show', 
                         name: "My Show", 
                         description: "My Show Description", 
-                        defaultLink: "https://www.myshow.com", 
-                        data: { tmdbId: 123 }
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
+                        sourceId: "123",
+                        data: {
+                            // tmdbId: 123,
+                            hi: "there",
+                        }
                     }
-                }).catch(err => {
-                    console.error(err)
                 })
             }}>
                 Add Subscription

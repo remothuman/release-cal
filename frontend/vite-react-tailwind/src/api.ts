@@ -6,10 +6,11 @@ export const authClient = createAuthClient({
     baseURL: "http://localhost:3000"
 })
 
-// unfortunately i would have to chain the routes on the backend for typing to work
-// may add it
+
 const client = hc<AppType>('http://localhost:3000/', {
     init: {
         credentials: 'include',
     }
 })
+
+export const api = client.api
