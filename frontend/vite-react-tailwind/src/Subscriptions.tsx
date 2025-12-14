@@ -94,12 +94,13 @@ function CalendarView() {
     return (
         <div>
             <h2 className="text-2xl font-bold">Releases Calendar</h2>
-            <pre>{events && JSON.stringify(events, null, 2)}</pre>
+            
             <button className="my-button-2" onClick={() => {
                 queryClient.invalidateQueries({ queryKey: ['events'] })
             }}>
                 Invalidate
             </button>
+            <pre>{events && JSON.stringify(events, null, 2)}</pre>
         </div>
     )
 }

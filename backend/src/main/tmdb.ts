@@ -232,6 +232,8 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
                     day: episode.air_date,
                     hasTime: false,
                     description: episode.overview,
+                    seasonNumber: seasonData.season_number.toString(),
+                    episodeNumber: episode.episode_number.toString(),
                 });
             }
         }

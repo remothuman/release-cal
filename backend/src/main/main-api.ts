@@ -89,6 +89,8 @@ const api = new Hono()
     return c.json(sub2);
 })
 .get("/me/events", async (c) => {
+    // todo: should be by month or date range
+    
     const session = await getSessionData(c);
     if (!session) {
         return c.json({ error: "Not logged in" }, 401);
@@ -97,12 +99,17 @@ const api = new Hono()
     
     const eventsRes = db
         .select({
+            // event: {
+            //     eventTitle: events.eventTitle,
+            //     day: events.day,
+            //     timestamp: events.timestamp,
+            // }
             event: events
         })
         .from(events)
         .innerJoin(
             channels,
-            eq(events.sourceId, channels.id) // wrong
+            eq(events.sourceId, channels.sourceId) // a hack! !!! should be by subscription so it generalizes
         )
         .innerJoin(
             subscriptionGroupsChannels,

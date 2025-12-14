@@ -87,9 +87,17 @@ export const events = sqliteTable("event", {
     day: text().notNull(),
     hasTime: integer("has_time", { mode: "boolean" }).notNull(),
     timestamp: integer("timestamp", { mode: "timestamp_ms" }),
+    // details: text({ mode: "json" }).$type<{
+    //     seasonNumber?: string,
+    //     episodeNumber?: string,
+    // }>(),
     
     
     description: text(),
+    seasonNumber: text(),
+    episodeNumber: text(), // these can also be used for stuff other than tv shows
+    
+    
     defaultLink: text(),
 }, (table) => [
     index("idx_event_subscriptionId_day").on(table.sourceId, table.day),
