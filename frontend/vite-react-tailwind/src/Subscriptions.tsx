@@ -78,10 +78,18 @@ function AddSubscriptionButton() {
 }
 
 function CalendarView() {
+    const [month, setMonth] = useState( new Date().getMonth() + 1)
+    const [year, setYear] = useState(new Date().getFullYear())
     const { data: events, isLoading, error } = useQuery({
-        queryKey: ['events'],
+        queryKey: ['events', month, year],
         queryFn: async () => {
-            const res = await api.me.events.$get()
+            const res = await api.me.events.$get({
+                query: {
+                    startDay: `${year}-${month}-01`,
+                    endDay: `${year}-${month}-${new Date(year, month + 2, 0).getDate()}`,
+                }
+                // not right but i got to run
+            })
             if (!res.ok) {
                 const errorText = await res.text().catch(() => res.statusText)
                 throw new Error(`Failed to fetch events: ${res.status} ${errorText}`)
@@ -104,6 +112,24 @@ function CalendarView() {
                 queryClient.invalidateQueries({ queryKey: ['events'] })
             }}>
                 Invalidate
+            </button>
+            <button className="my-button-2" onClick={() => {
+                setMonth(month + 1)
+                if (month === 12) {
+                    setYear(year + 1)
+                    setMonth(1)
+                }
+            }}>
+                Next Month
+            </button>
+            <button className="my-button-2" onClick={() => {
+                setMonth(month - 1)
+                if (month === 0) {
+                    setYear(year - 1)
+                    setMonth(11)
+                }
+            }}>
+                Previous Month
             </button>
             <pre>{events && JSON.stringify(events, null, 2)}</pre>
         </div>

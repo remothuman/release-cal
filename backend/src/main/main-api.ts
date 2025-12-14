@@ -8,7 +8,7 @@ import {
     subscriptionGroupsChannels,
     events,
 } from "./schema";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -91,6 +91,17 @@ const api = new Hono()
 .get("/me/events", async (c) => {
     // todo: should be by month or date range
     
+    const qp = c.req.query();
+    const r = z.object({
+        startDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        endDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    }).safeParse(qp);
+    if (!r.success) {
+        return c.json({ error: "Invalid query parameters, return start day to end day in format YYYY-MM-DD" }, 400);
+    }
+    const { startDay, endDay } = r.data;
+    
+    
     const session = await getSessionData(c);
     if (!session) {
         return c.json({ error: "Not logged in" }, 401);
@@ -116,7 +127,11 @@ const api = new Hono()
             eq(channels.id, subscriptionGroupsChannels.channelId)
         )
         .where(
-            eq(subscriptionGroupsChannels.subscriptionGroupId, subscriptionGroup.id)
+            and(
+                eq(subscriptionGroupsChannels.subscriptionGroupId, subscriptionGroup.id),
+                gte(events.day, startDay),
+                lte(events.day, endDay)
+            )
         )
         .all();
     
