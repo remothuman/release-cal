@@ -1,12 +1,12 @@
 import { type Context, Hono } from "hono";
-import { auth } from "./auth";
-import { db } from "./db";
+import { auth } from "../auth";
+import { db } from "../db";
 import {
     myTable,
     channels,
     subscriptionGroups,
     subscriptionGroupsChannels,
-} from "./schema";
+} from "../schema";
 import { eq } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
