@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { sqliteTable, integer, text, blob, index, primaryKey } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
-import { user } from "./auth-schema";
+import { user } from "../auth-schema";
 
 const timestamps = {
     createdAt: integer("created_at", { mode: "timestamp_ms" })

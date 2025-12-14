@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { myTable } from "./schema";
+import { myTable } from "./main/schema";
 import { Hono } from "hono";
 import { auth } from "./auth";
 import { serve } from "@hono/node-server";

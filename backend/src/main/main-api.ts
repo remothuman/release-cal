@@ -7,7 +7,7 @@ import {
     subscriptionGroups,
     subscriptionGroupsChannels,
     events,
-} from "../schema";
+} from "./schema";
 import { eq } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";

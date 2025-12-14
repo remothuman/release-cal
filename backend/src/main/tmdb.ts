@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { warnParse } from "../utils";
 import { db } from "../db";
-import { events, channels } from "../schema";
+import { events, channels } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
 
 
