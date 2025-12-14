@@ -8,7 +8,8 @@
     "db:push": "drizzle-kit push",
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "dev2": "clear && pnpm run db:push && pnpm run dev"
+    "dev2": "clear && pnpm run db:push && pnpm run dev",
+    "dev-crazy": "rm -f local.db && pnpm run dev2 "
   },
   "keywords": [],
   "author": "",

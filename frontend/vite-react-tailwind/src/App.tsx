@@ -1,7 +1,7 @@
 import { authClient } from "./api";
 import { useState } from "react";
 import Subscriptions from "./Subscriptions";
-  
+
 export default function App() {
   const { data: session, isPending, error, refetch } = authClient.useSession();
   console.log(session);
@@ -24,11 +24,15 @@ export default function App() {
           />
         </>
       )}
-      {signInStatus === "Signed In" && <SignOutButton />}
-      {/* TODO: add the SSO, probably replace the signIn and Up with one thing */}
-      {/* ------ */}
-      <div className="mt-4"></div>
-      <Subscriptions />
+      {signInStatus === "Signed In" && (
+        <>
+          <SignOutButton />
+
+          <div className="mt-4"></div>
+          <Subscriptions />
+        </>
+      )}
+      <div className="mt-[80vh]"></div>
     </div>
   );
 }
@@ -154,4 +158,3 @@ function SignUpOrIn(props: { onSuccess: () => void }) {
     </form>
   );
 }
-

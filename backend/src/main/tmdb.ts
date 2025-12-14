@@ -2,6 +2,7 @@ import { z } from "zod";
 import { warnParse } from "../utils";
 import { db } from "../db";
 import { events, channels } from "../schema";
+import { and, eq, sql } from "drizzle-orm";
 
 
 
@@ -190,29 +191,41 @@ export async function getTmdbSeason(tmdbId: number, seasonNumber: number) {
 }
 
 
-export async function createTmdbSubscription(tmdbId: number) {
+export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpdateIfOlderThanHours: number|null = 24) {
+    // check if channel already exists
+    const existingChannel = await db
+        .select()
+        .from(channels)
+        .where(and(eq(channels.sourceId, tmdbId.toString()), eq(channels.sourceType, "tmdb")))
+        .limit(1);
+    if (existingChannel.length > 0) {
+        const shouldUpdate = ifExistsUpdateIfOlderThanHours != null && (
+            existingChannel[0].lastIndexedAt == null ||
+            existingChannel[0].lastIndexedAt.getTime() <
+                Date.now() - ifExistsUpdateIfOlderThanHours * 60 * 60 * 1000
+        );
+        if (!shouldUpdate) {
+            return existingChannel[0].id;
+        }
+        // continue on this function to update the channel
+    }
+    
+    
     const tmdbShowData = await getTmdbShowData(tmdbId);
     const seasons = tmdbShowData.seasons.map(season => season.season_number);
-    
     const seasonsData = await Promise.all(seasons.map(season => getTmdbSeason(tmdbId, season)));
+    // TODO: sometimes the connection fails. should return error to client or retry
     
-    await db.transaction(async (tx) => {
-        // add the show to the database
-        await tx.insert(channels).values({
-            id: crypto.randomUUID(),
-            sourceId: tmdbId.toString(),
-            name: tmdbShowData.name,
-            description: tmdbShowData.overview,
-            type: "tv-show",
-        });
+    const newlyCreatedChannelId = db.transaction((tx) => {
         // add all episodes to the database
+        const rowsToInsert = [] as typeof events.$inferInsert[];
         for (const seasonData of seasonsData) {
             for (const episode of seasonData.episodes) {
                 if (!episode.air_date) {
                     console.warn(`No air date for episode ${episode.name}`);
                     continue;
                 }
-                await tx.insert(events).values({
+                rowsToInsert.push({
                     id: crypto.randomUUID(),
                     sourceId: `${tmdbId}`,
                     eventTitle: episode.name,
@@ -222,7 +235,40 @@ export async function createTmdbSubscription(tmdbId: number) {
                 });
             }
         }
+        console.log("rowsToInsert", rowsToInsert.length);
+        if (rowsToInsert.length > 0) {
+            tx.insert(events).values(rowsToInsert).run();
+        }
+        else {
+            console.warn("No episodes to insert");
+        }
+        
+        // add the show to the database
+        if (existingChannel.length > 0) {
+            // we were just updating the channel, so we don't need to add it again
+            // but we should update lastIndexedAt
+            tx.update(channels)
+                .set({ lastIndexedAt: new Date() })
+                .where(eq(channels.id, existingChannel[0].id))
+                .run();
+            return existingChannel[0].id;
+        }
+        const newChannelId = crypto.randomUUID();
+        tx.insert(channels).values({
+            id: newChannelId,
+            sourceId: tmdbId.toString(), 
+            lastIndexedAt: new Date(),
+            
+            type: "tv-show",
+            sourceType: "tmdb",
+            
+            name: tmdbShowData.name,
+            description: tmdbShowData.overview,
+        }).run();
+        // .returning().all();
+        return newChannelId;
     });
+    return newlyCreatedChannelId;
 }
 // link: `https://www.google.com/search?q=${tmdbShowData.name}+justwatch&btnI=I'm+Feeling+Lucky`
 // link will be stored in seperate user specific table or generated on the fly

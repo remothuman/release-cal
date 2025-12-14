@@ -1,7 +1,8 @@
 // import { useQuery } from '@tanstack/react-query'
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "./api"
+import { useState } from "react"
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -24,6 +25,12 @@ export default function Subscriptions() {
     return (
         <div>
             <h2 className="text-2xl font-bold">Subscriptions</h2>
+            <button className="my-button-2" onClick={() => {
+                api.me.clearAllSubscriptions.$delete()
+            }}>
+                Clear All Subscriptions
+            </button>
+            <AddSubscriptionButton />
             {isLoading && <p>Loading...</p>}
             {error && <p>Error: {error.message}</p>}
             <pre>{subscriptions && JSON.stringify(subscriptions, null, 2)}</pre>
@@ -32,34 +39,67 @@ export default function Subscriptions() {
             }}>
                 Invalidate
             </button>
-            <button className="my-button-2" onClick={() => {
-                api.me.subscribeNewSubscription.$post({
-                    json: {
-                        type: 'tv-show', 
-                        name: "My Show", 
-                        description: "My Show Description", 
-                        sourceId: "123",
-                        data: {
-                            // tmdbId: 123,
-                            hi: "there",
-                        }
-                    }
-                })
-            }}>
-                Add Subscription
-            </button>
+            <CalendarView />
+            
         </div>
     )
 }
-function addSubscription(tmdbId: number) {
-    const tmdbData = 
+function AddSubscriptionButton() {
     
-    
-    fetch(`${BASE_URL}/api/me/subscribeNewSubscription`, {
-        credentials: 'include',
-        method: 'POST',
-        body: JSON.stringify({ 
-            type: 'tv-show',
-        }),
+    const mutation = useMutation({
+        mutationFn: async (tmdbId: string) => {
+            const res = await api.me.subscribeTmdbShow.$post({
+                json: {
+                    tmdbId: parseInt(tmdbId),
+                }
+            })
+        }
     })
+    
+    const [tmdbId, setTmdbId] = useState("")
+    function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        mutation.mutate(tmdbId)
+    }
+    return (
+        <form onSubmit={handleSubmit}>
+            <input type="text" placeholder="TMDB ID" value={tmdbId} onChange={(e) => setTmdbId(e.target.value)} />
+            <button className="my-button-2" type="submit">Add Subscription</button>
+            {mutation.isPending && <p className="text-blue-500">Adding subscription...</p>}
+            {mutation.isError && <p className="text-red-500">Error: {mutation.error.message}</p>}
+            {mutation.isSuccess && <p className="text-green-500">Subscription added successfully</p>}
+        </form>
+    )
+}
+
+function CalendarView() {
+    const { data: events, isLoading, error } = useQuery({
+        queryKey: ['events'],
+        queryFn: async () => {
+            const res = await api.me.events.$get()
+            if (!res.ok) {
+                const errorText = await res.text().catch(() => res.statusText)
+                throw new Error(`Failed to fetch events: ${res.status} ${errorText}`)
+            }
+            return res.json()
+        }
+    })
+    const queryClient = useQueryClient()
+    if (isLoading) {
+        return <p>Loading...</p>
+    }
+    if (error) {
+        return <p>Error: {error.message}</p>
+    }
+    return (
+        <div>
+            <h2 className="text-2xl font-bold">Releases Calendar</h2>
+            <pre>{events && JSON.stringify(events, null, 2)}</pre>
+            <button className="my-button-2" onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['events'] })
+            }}>
+                Invalidate
+            </button>
+        </div>
+    )
 }

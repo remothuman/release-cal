@@ -6,12 +6,13 @@ import {
     channels,
     subscriptionGroups,
     subscriptionGroupsChannels,
+    events,
 } from "../schema";
 import { eq } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { getTmdbShowData } from "./tmdb";
+import { createTmdbTvChannelIfNotExists, getTmdbShowData } from "./tmdb";
 
 
 
@@ -70,8 +71,10 @@ const api = new Hono()
     const mySubscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
     
     
-    const subscriptionsRes = await db
-        .select()
+    const channelsRes = await db
+        .select({
+            channel: channels,
+        })
         .from(channels)
         .innerJoin(
             subscriptionGroupsChannels,
@@ -79,63 +82,42 @@ const api = new Hono()
         ).where(
             eq(subscriptionGroupsChannels.subscriptionGroupId, mySubscriptionGroup.id)
         ).all()
-    const sub2 = subscriptionsRes.map(row => row.channel)
+    const sub2 = channelsRes.map(row => row.channel)
     
     
     
     return c.json(sub2);
 })
-
-.post(
-    "/me/subscribeNewSubscription",
-    zValidator("json", createInsertSchema(channels)),
-    async (c) => {
-        const session = await getSessionData(c, true);
-        const subscriptionGroup = await getUserSubscriptionGroup(
-            session!.user.id
-        );
-
-        const body = c.req.valid("json");
-
-        const newChannel = await db
-            .insert(channels)
-            .values({ ...body, id: crypto.randomUUID() })
-            .returning();
-
-        const newRelation = await db
-            .insert(subscriptionGroupsChannels)
-            .values({
-                subscriptionGroupId: subscriptionGroup.id,
-                channelId: newChannel[0].id,
-            })
-            .returning();
-
-        return c.json(newRelation[0]);
+.get("/me/events", async (c) => {
+    const session = await getSessionData(c);
+    if (!session) {
+        return c.json({ error: "Not logged in" }, 401);
     }
-)
-
-// MAYBE keep
-.post(
-    "/me/subscribeExistingSubscription",
-    zValidator("json", z.object({ subscriptionId: z.string() })),
-    async (c) => {
-        const session = await getSessionData(c, true);
-        const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
-        
-        const body = c.req.valid("json");
-        
-        const newRelation = await db
-            .insert(subscriptionGroupsChannels)
-            .values({
-                subscriptionGroupId: subscriptionGroup.id,
-                channelId: body.subscriptionId,
-            })
-            .returning();
-
-        return c.json(newRelation[0]);
-    }
-)
-
+    const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
+    
+    const eventsRes = db
+        .select({
+            event: events
+        })
+        .from(events)
+        .innerJoin(
+            channels,
+            eq(events.sourceId, channels.id) // wrong
+        )
+        .innerJoin(
+            subscriptionGroupsChannels,
+            eq(channels.id, subscriptionGroupsChannels.channelId)
+        )
+        .where(
+            eq(subscriptionGroupsChannels.subscriptionGroupId, subscriptionGroup.id)
+        )
+        .all();
+    
+    const eventsList = eventsRes.map(row => row.event);
+    console.log("eventsRes", eventsRes);
+    
+    return c.json(eventsList);
+})
 
 
 .post(
@@ -151,12 +133,33 @@ const api = new Hono()
         );
         const body = c.req.valid("json");
 
-        const tmdbShowData = await getTmdbShowData(body.tmdbId);
+        console.log("creating channel for tmdbId", body.tmdbId);
+        const channelId = await createTmdbTvChannelIfNotExists(body.tmdbId);
+        if (!channelId) {
+            return c.json({ error: "Failed to create channel relation" }, 500);
+        }
         
-        const seasons = tmdbShowData.seasons.map(season => season.season_number);
-        
-        // insert new subscription
+        const newRelation = await db
+            .insert(subscriptionGroupsChannels)
+            .values({
+                subscriptionGroupId: subscriptionGroup.id,
+                channelId: channelId,
+            })
+            .returning();
+        return c.json(newRelation[0]);
     }
 )
+
+.delete("/me/clearAllSubscriptions", async (c) => {
+    const session = await getSessionData(c);
+    if (!session) {
+        return c.json({ error: "Not logged in" }, 401);
+    }
+    const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
+    await db.delete(subscriptionGroupsChannels).where(eq(subscriptionGroupsChannels.subscriptionGroupId, subscriptionGroup.id)).run();
+    return c.json({ message: "All subscriptions cleared" });
+})
+
+
 
 export default api;

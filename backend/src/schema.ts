@@ -40,12 +40,16 @@ export const channels = sqliteTable("channel", {
         .primaryKey()
         .$default(() => crypto.randomUUID()),
     ...timestamps,
+    lastIndexedAt: integer("last_indexed_at", { mode: "timestamp_ms" }), // yes nullable
 
     name: text(),
     description: text(),
     // defaultLink: text(),
     type: text("type", {
         enum: ["tv-show", "movie", "custom-collection"],
+    }).notNull(),
+    sourceType: text("source_type", {
+        enum: ["tmdb", "custom"],
     }).notNull(),
     sourceId: text({ mode: "text" }), // eg tmdbId, custom-our-system id based on type
     data: text({ mode: "json" }).$type<any>() // 
@@ -54,7 +58,7 @@ export const channels = sqliteTable("channel", {
 
 
 
-// join table for subscription groups and subscriptions
+// join table for subscription groups and channels
 export const subscriptionGroupsChannels = sqliteTable("subgroup_channel", {
     subscriptionGroupId: text().references(() => subscriptionGroups.id).notNull(),
     channelId: text().references(() => channels.id).notNull(),
@@ -100,7 +104,7 @@ export const events = sqliteTable("event", {
 /* 
 Model
 
-User has SubscriptionGroup(s)  --- for now one-to-one, maybe later will add sharing
+User has SubscriptionGroup(s)  --- `for` now one-to-one, maybe later will add sharing
 SubscriptionGroup has Channels(s)
 Channel has Event(s)
 
