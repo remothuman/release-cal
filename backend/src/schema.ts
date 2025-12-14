@@ -25,8 +25,8 @@ export const myTable = sqliteTable("myTable", {
 
 type SubscriptionGroupData = any
 
-// maybe rename to something like subscriptionCollections
-export const subscriptionGroups = sqliteTable("subscription_groups", {
+// maybe rename to something like subscriptionCollections -- or subGroup
+export const subscriptionGroups = sqliteTable("subscription_group", {
     id: text("id").primaryKey().$default(() => crypto.randomUUID()), // sometimes equal to userId
     ...timestamps,
 
@@ -34,38 +34,49 @@ export const subscriptionGroups = sqliteTable("subscription_groups", {
 });
 
 
-export const subscription = sqliteTable("subscription", {
-    id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+export const subscriptions = sqliteTable("subscription", {
+    id: text("id")
+        .primaryKey()
+        .$default(() => crypto.randomUUID()),
     ...timestamps,
-    
-    data: text({ mode: "json" }).$type<any>().notNull(),
+
     name: text(),
     description: text(),
     defaultLink: text(),
-    type: text("type", { enum: ["tv-show", "movie", "custom-collection"] }).notNull(),
-    sourceId: text(), // eg tmdbId, imdbId, etc
-    
+    type: text("type", {
+        enum: ["tv-show", "movie", "custom-collection"],
+    }).notNull(),
+    sourceId: text({ mode: "text" }), // eg tmdbId, custom-our-system id based on type
+    data: text({ mode: "json" }).$type<any>() // 
 }); 
 
 
 
 
 // join table for subscription groups and subscriptions
-export const subscriptionGroupSubscriptions = sqliteTable("subscription_group_subscriptions", {
+export const subscriptionGroupsSubscriptions = sqliteTable("subgroup_subscription", {
     subscriptionGroupId: text().references(() => subscriptionGroups.id).notNull(),
-    subscriptionId: text().references(() => subscription.id).notNull(),
+    subscriptionId: text().references(() => subscriptions.id).notNull(),
 }, (table) => [
     primaryKey({ columns: [table.subscriptionGroupId, table.subscriptionId] }),
 ]);
 // todo foreign key definition maybe
 
+/*
+
+Sources:
+- tmdb      subscription.sourceId = aTmdbId    events.sourceId = aTmdbId
+- custom    subscription.sourceId = subscription.id    events.sourceId = subscription.id
+
+*/
 
 
-export const events = sqliteTable("events", {
+export const events = sqliteTable("event", {
     id: text("id").primaryKey(),
     ...timestamps,
     
-    subscriptionId: text().references(() => subscription.id).notNull(),
+    sourceId: text().notNull(),
+    // maps on to tmdbId, or customid etc
     
     eventTitle: text().notNull(),
     day: text().notNull(),
@@ -76,10 +87,27 @@ export const events = sqliteTable("events", {
     description: text(),
     link: text(),
 }, (table) => [
-    index("events_subscriptionId_idx").on(table.subscriptionId, table.day),
+    index("idx_event_subscriptionId_day").on(table.sourceId, table.day),
     // index("events_day_idx").on(table.day, ),
 ]);
 
 
 // todo: define drizzle relations helper (might require drizzle-1.0)
 // this also enables cleaner many-many select function
+
+
+/* 
+Model
+
+User has SubscriptionGroup(s)  --- for now one-to-one, maybe later will add sharing
+SubscriptionGroup has Subscription(s)
+Subscription has Event(s)
+
+objective data:
+- tmdb events
+- not-so-objective predicted events for a show/podcast
+user-specific data:
+- custom link for the subscription
+- maybe: custom name or description
+
+*/

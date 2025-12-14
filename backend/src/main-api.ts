@@ -3,9 +3,9 @@ import { auth } from "./auth";
 import { db } from "./db";
 import {
     myTable,
-    subscription,
+    subscriptions,
     subscriptionGroups,
-    subscriptionGroupSubscriptions,
+    subscriptionGroupsSubscriptions,
 } from "./schema";
 import { eq } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
@@ -67,7 +67,7 @@ api.get("/me/subscriptions", async (c) => {
     const mySubscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
     
     
-    const subscriptions = await db
+    const subscriptionsRes = await db
         // .select({
         //     id: subscription.id,
         //     name: subscription.name,
@@ -78,14 +78,14 @@ api.get("/me/subscriptions", async (c) => {
         //     data: subscription.data,
         // })
         .select()
-        .from(subscription)
+        .from(subscriptions)
         .innerJoin(
-            subscriptionGroupSubscriptions,
-            eq(subscription.id, subscriptionGroupSubscriptions.subscriptionId)
+            subscriptionGroupsSubscriptions,
+            eq(subscriptions.id, subscriptionGroupsSubscriptions.subscriptionId)
         ).where(
-            eq(subscriptionGroupSubscriptions.subscriptionGroupId, mySubscriptionGroup.id)
-        )
-    const sub2 = subscriptions.map(row => row.subscription)
+            eq(subscriptionGroupsSubscriptions.subscriptionGroupId, mySubscriptionGroup.id)
+        ).all()
+    const sub2 = subscriptionsRes.map(row => row.subscription)
     
     
     
@@ -94,7 +94,7 @@ api.get("/me/subscriptions", async (c) => {
 
 api.post(
     "/me/subscribeNewSubscription",
-    zValidator("json", createInsertSchema(subscription)),
+    zValidator("json", createInsertSchema(subscriptions)),
     async (c) => {
         const session = await getSessionData(c, true);
         const subscriptionGroup = await getUserSubscriptionGroup(
@@ -104,12 +104,12 @@ api.post(
         const body = c.req.valid("json");
 
         const newSubscription = await db
-            .insert(subscription)
+            .insert(subscriptions)
             .values({ ...body, id: crypto.randomUUID() })
             .returning();
 
         const newRelation = await db
-            .insert(subscriptionGroupSubscriptions)
+            .insert(subscriptionGroupsSubscriptions)
             .values({
                 subscriptionGroupId: subscriptionGroup.id,
                 subscriptionId: newSubscription[0].id,
@@ -119,6 +119,8 @@ api.post(
         return c.json(newRelation[0]);
     }
 );
+
+// MAYBE keep
 api.post(
     "/me/subscribeExistingSubscription",
     zValidator("json", z.object({ subscriptionId: z.string() })),
@@ -129,7 +131,7 @@ api.post(
         const body = c.req.valid("json");
         
         const newRelation = await db
-            .insert(subscriptionGroupSubscriptions)
+            .insert(subscriptionGroupsSubscriptions)
             .values({
                 subscriptionGroupId: subscriptionGroup.id,
                 subscriptionId: body.subscriptionId,
