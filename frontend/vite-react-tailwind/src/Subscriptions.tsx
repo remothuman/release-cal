@@ -53,6 +53,11 @@ function AddSubscriptionButton() {
                     tmdbId: parseInt(tmdbId),
                 }
             })
+            if (!res.ok) {
+                const errorText = await res.text().catch(() => res.statusText)
+                throw new Error(`Failed to add subscription: ${res.status} ${errorText}`)
+            }
+            return res.json()
         }
     })
     

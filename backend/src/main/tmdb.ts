@@ -213,10 +213,43 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
     
     const tmdbShowData = await getTmdbShowData(tmdbId);
     const seasons = tmdbShowData.seasons.map(season => season.season_number);
-    const seasonsData = await Promise.all(seasons.map(season => getTmdbSeason(tmdbId, season)));
+    // const seasonsData = await Promise.all(seasons.map(season => getTmdbSeason(tmdbId, season)));
+    let seasonsData = []
+    for (const season of seasons) {
+        const seasonData = await getTmdbSeason(tmdbId, season);
+        seasonsData.push(seasonData);
+    }
     // TODO: sometimes the connection fails. should return error to client or retry
     
+    const areJustUpdating = existingChannel.length > 0;
     const newlyCreatedChannelId = db.transaction((tx) => {
+        
+        const channelId = areJustUpdating ? existingChannel[0].id : crypto.randomUUID();
+        
+        // add the show to the database
+        if (areJustUpdating) {
+            // we were just updating the channel, so we don't need to add it again
+            // but we should update lastIndexedAt
+            tx.update(channels)
+                .set({ lastIndexedAt: new Date() })
+                .where(eq(channels.id, channelId))
+                .run();
+            return channelId;
+        }
+        else {
+            tx.insert(channels).values({
+                id: channelId,
+                sourceId: tmdbId.toString(), 
+                lastIndexedAt: new Date(),
+                
+                type: "tv-show",
+                sourceType: "tmdb",
+                
+                name: tmdbShowData.name,
+                description: tmdbShowData.overview,
+            }).run();
+        }
+        
         // add all episodes to the database
         const rowsToInsert = [] as typeof events.$inferInsert[];
         for (const seasonData of seasonsData) {
@@ -227,7 +260,8 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
                 }
                 rowsToInsert.push({
                     id: crypto.randomUUID(),
-                    sourceId: `${tmdbId}`,
+                    // sourceId: `${tmdbId}`,
+                    channelId: channelId,
                     eventTitle: episode.name,
                     day: episode.air_date,
                     hasTime: false,
@@ -237,6 +271,10 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
                 });
             }
         }
+        if (areJustUpdating) {
+            // delete all existing events for this channel, since we just got all of them
+            tx.delete(events).where(eq(events.channelId, channelId)).run();
+        }
         console.log("rowsToInsert", rowsToInsert.length);
         if (rowsToInsert.length > 0) {
             tx.insert(events).values(rowsToInsert).run();
@@ -244,33 +282,20 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
         else {
             console.warn("No episodes to insert");
         }
+
+        // console.log("inserted")
         
-        // add the show to the database
-        if (existingChannel.length > 0) {
-            // we were just updating the channel, so we don't need to add it again
-            // but we should update lastIndexedAt
-            tx.update(channels)
-                .set({ lastIndexedAt: new Date() })
-                .where(eq(channels.id, existingChannel[0].id))
-                .run();
-            return existingChannel[0].id;
-        }
-        const newChannelId = crypto.randomUUID();
-        tx.insert(channels).values({
-            id: newChannelId,
-            sourceId: tmdbId.toString(), 
-            lastIndexedAt: new Date(),
-            
-            type: "tv-show",
-            sourceType: "tmdb",
-            
-            name: tmdbShowData.name,
-            description: tmdbShowData.overview,
-        }).run();
+        
+        
         // .returning().all();
-        return newChannelId;
+        return channelId;
     });
     return newlyCreatedChannelId;
 }
+// TODO: cron updating channel events
+
+
+
+
 // link: `https://www.google.com/search?q=${tmdbShowData.name}+justwatch&btnI=I'm+Feeling+Lucky`
 // link will be stored in seperate user specific table or generated on the fly

@@ -109,7 +109,7 @@ const api = new Hono()
         .from(events)
         .innerJoin(
             channels,
-            eq(events.sourceId, channels.sourceId) // a hack! !!! should be by subscription so it generalizes
+            eq(events.channelId, channels.id) 
         )
         .innerJoin(
             subscriptionGroupsChannels,

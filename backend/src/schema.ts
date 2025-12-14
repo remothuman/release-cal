@@ -80,8 +80,9 @@ export const events = sqliteTable("event", {
     id: text("id").primaryKey(),
     ...timestamps,
     
-    sourceId: text().notNull(),
-    // maps on to tmdbId, or customid etc
+    channelId: text().references(() => channels.id).notNull(),
+    
+    // sourceId: text().notNull(),
     
     eventTitle: text().notNull(),
     day: text().notNull(),
@@ -100,7 +101,7 @@ export const events = sqliteTable("event", {
     
     defaultLink: text(),
 }, (table) => [
-    index("idx_event_subscriptionId_day").on(table.sourceId, table.day),
+    index("idx_event_subscriptionId_day").on(table.channelId, table.day),
     // index("events_day_idx").on(table.day, ),
 ]);
 
@@ -112,9 +113,9 @@ export const events = sqliteTable("event", {
 /* 
 Model
 
-User has SubscriptionGroup(s)  --- `for` now one-to-one, maybe later will add sharing
-SubscriptionGroup has Channels(s)
-Channel has Event(s)
+User has SubscriptionGroup(s)  --- for now one-to-one, will add shareable groups later
+SubscriptionGroup has Channels(s) (many-many)
+Channel has Event(s) (one-to-many)
 
 objective data:
 - tmdb events
@@ -122,6 +123,7 @@ objective data:
 user-specific data:
 - custom link for the subscription
 - maybe: custom name or description
+-- will add user specific data if needed in a semi-seperate system/tables
 
 
 
