@@ -52,3 +52,15 @@ export default function Subscriptions() {
         </div>
     )
 }
+function addSubscription(tmdbId: number) {
+    const tmdbData = 
+    
+    
+    fetch(`${BASE_URL}/api/me/subscribeNewSubscription`, {
+        credentials: 'include',
+        method: 'POST',
+        body: JSON.stringify({ 
+            type: 'tv-show',
+        }),
+    })
+}

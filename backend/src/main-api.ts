@@ -3,14 +3,15 @@ import { auth } from "./auth";
 import { db } from "./db";
 import {
     myTable,
-    subscriptions,
+    channels,
     subscriptionGroups,
-    subscriptionGroupsSubscriptions,
+    subscriptionGroupsChannels,
 } from "./schema";
 import { eq } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { getTmdbShowData } from "./tmdb";
 
 const api = new Hono();
 
@@ -44,9 +45,7 @@ async function getUserSubscriptionGroup(userId: string) {
             .insert(subscriptionGroups)
             .values({
                 id: subscriptionGroupId,
-                data: {
-                    subscriptions: [],
-                },
+                ownerId: userId,
             })
             .returning();
         return newSubscriptionGroupR[0];
@@ -63,29 +62,23 @@ async function getUserSubscriptionGroup(userId: string) {
 }
 
 api.get("/me/subscriptions", async (c) => {
-    const session = await getSessionData(c, true);
+    const session = await getSessionData(c, false);
+    if (!session) {
+        return c.json({ error: "Not logged in" }, 401);
+    }
     const mySubscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
     
     
     const subscriptionsRes = await db
-        // .select({
-        //     id: subscription.id,
-        //     name: subscription.name,
-        //     description: subscription.description,
-        //     defaultLink: subscription.defaultLink,
-        //     type: subscription.type,
-        //     sourceId: subscription.sourceId,
-        //     data: subscription.data,
-        // })
         .select()
-        .from(subscriptions)
+        .from(channels)
         .innerJoin(
-            subscriptionGroupsSubscriptions,
-            eq(subscriptions.id, subscriptionGroupsSubscriptions.subscriptionId)
+            subscriptionGroupsChannels,
+            eq(channels.id, subscriptionGroupsChannels.channelId)
         ).where(
-            eq(subscriptionGroupsSubscriptions.subscriptionGroupId, mySubscriptionGroup.id)
+            eq(subscriptionGroupsChannels.subscriptionGroupId, mySubscriptionGroup.id)
         ).all()
-    const sub2 = subscriptionsRes.map(row => row.subscription)
+    const sub2 = subscriptionsRes.map(row => row.channel)
     
     
     
@@ -94,7 +87,7 @@ api.get("/me/subscriptions", async (c) => {
 
 api.post(
     "/me/subscribeNewSubscription",
-    zValidator("json", createInsertSchema(subscriptions)),
+    zValidator("json", createInsertSchema(channels)),
     async (c) => {
         const session = await getSessionData(c, true);
         const subscriptionGroup = await getUserSubscriptionGroup(
@@ -103,16 +96,16 @@ api.post(
 
         const body = c.req.valid("json");
 
-        const newSubscription = await db
-            .insert(subscriptions)
+        const newChannel = await db
+            .insert(channels)
             .values({ ...body, id: crypto.randomUUID() })
             .returning();
 
         const newRelation = await db
-            .insert(subscriptionGroupsSubscriptions)
+            .insert(subscriptionGroupsChannels)
             .values({
                 subscriptionGroupId: subscriptionGroup.id,
-                subscriptionId: newSubscription[0].id,
+                channelId: newChannel[0].id,
             })
             .returning();
 
@@ -131,14 +124,37 @@ api.post(
         const body = c.req.valid("json");
         
         const newRelation = await db
-            .insert(subscriptionGroupsSubscriptions)
+            .insert(subscriptionGroupsChannels)
             .values({
                 subscriptionGroupId: subscriptionGroup.id,
-                subscriptionId: body.subscriptionId,
+                channelId: body.subscriptionId,
             })
             .returning();
 
         return c.json(newRelation[0]);
+    }
+);
+
+
+
+api.post(
+    "/me/subscribeTmdbShow",
+    zValidator("json", z.object({ tmdbId: z.number() })),
+    async (c) => {
+        const session = await getSessionData(c);
+        if (!session) {
+            return c.json({ error: "Not logged in" }, 401);
+        }
+        const subscriptionGroup = await getUserSubscriptionGroup(
+            session!.user.id
+        );
+        const body = c.req.valid("json");
+
+        const tmdbShowData = await getTmdbShowData(body.tmdbId);
+        
+        const seasons = tmdbShowData.seasons.map(season => season.season_number);
+        
+        // insert new subscription
     }
 );
 

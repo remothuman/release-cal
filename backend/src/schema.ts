@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { sqliteTable, integer, text, blob, index, primaryKey } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
+import { user } from "./auth-schema";
 
 const timestamps = {
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -23,18 +24,18 @@ export const myTable = sqliteTable("myTable", {
     // jsonField2: blob().$type<{ foo: string }>(),
 });
 
-type SubscriptionGroupData = any
 
 // maybe rename to something like subscriptionCollections -- or subGroup
 export const subscriptionGroups = sqliteTable("subscription_group", {
     id: text("id").primaryKey().$default(() => crypto.randomUUID()), // sometimes equal to userId
     ...timestamps,
+    ownerId: text().references(() => user.id).notNull(),
 
-    data: text({ mode: "json" }).$type<SubscriptionGroupData>().notNull(),
+    // data: text({ mode: "json" }).$type<any>().notNull(),
 });
 
 
-export const subscriptions = sqliteTable("subscription", {
+export const channels = sqliteTable("channel", {
     id: text("id")
         .primaryKey()
         .$default(() => crypto.randomUUID()),
@@ -42,7 +43,7 @@ export const subscriptions = sqliteTable("subscription", {
 
     name: text(),
     description: text(),
-    defaultLink: text(),
+    // defaultLink: text(),
     type: text("type", {
         enum: ["tv-show", "movie", "custom-collection"],
     }).notNull(),
@@ -54,11 +55,11 @@ export const subscriptions = sqliteTable("subscription", {
 
 
 // join table for subscription groups and subscriptions
-export const subscriptionGroupsSubscriptions = sqliteTable("subgroup_subscription", {
+export const subscriptionGroupsChannels = sqliteTable("subgroup_channel", {
     subscriptionGroupId: text().references(() => subscriptionGroups.id).notNull(),
-    subscriptionId: text().references(() => subscriptions.id).notNull(),
+    channelId: text().references(() => channels.id).notNull(),
 }, (table) => [
-    primaryKey({ columns: [table.subscriptionGroupId, table.subscriptionId] }),
+    primaryKey({ columns: [table.subscriptionGroupId, table.channelId] }),
 ]);
 // todo foreign key definition maybe
 
@@ -85,7 +86,7 @@ export const events = sqliteTable("event", {
     
     
     description: text(),
-    link: text(),
+    defaultLink: text(),
 }, (table) => [
     index("idx_event_subscriptionId_day").on(table.sourceId, table.day),
     // index("events_day_idx").on(table.day, ),
@@ -100,8 +101,8 @@ export const events = sqliteTable("event", {
 Model
 
 User has SubscriptionGroup(s)  --- for now one-to-one, maybe later will add sharing
-SubscriptionGroup has Subscription(s)
-Subscription has Event(s)
+SubscriptionGroup has Channels(s)
+Channel has Event(s)
 
 objective data:
 - tmdb events
@@ -109,5 +110,7 @@ objective data:
 user-specific data:
 - custom link for the subscription
 - maybe: custom name or description
+
+
 
 */

@@ -40,3 +40,5 @@ app.use(
 app.route('/api/', api)
 
 serve(app)
+
+export type AppType = typeof app;
