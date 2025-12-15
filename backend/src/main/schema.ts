@@ -62,10 +62,9 @@ export const channels = sqliteTable("channel", {
 export const subscriptionGroupsChannels = sqliteTable("subgroup_channel", {
     subscriptionGroupId: text().references(() => subscriptionGroups.id).notNull(),
     channelId: text().references(() => channels.id).notNull(),
+    // tmdbId: text()
 }, (table) => [
     primaryKey({ columns: [table.subscriptionGroupId, table.channelId] }),
-    // Index on subscriptionGroupId for efficient filtering in /me/events query
-    // This helps when joining to find all channels for a subscription group
     index("idx_subgroup_channel_subscriptionGroupId").on(table.subscriptionGroupId),
 ]);
 // todo foreign key definition maybe
@@ -104,14 +103,7 @@ export const events = sqliteTable("event", {
     
     defaultLink: text(),
 }, (table) => [
-    // Composite index on (channelId, day) - good for:
-    // 1. Filtering events by channel and day range
-    // 2. The order (channelId, day) is optimal since channelId is more selective
-    //    and we typically filter by channelId first, then day range
-    // Note: This index helps with the /me/events query when filtering by day range
-    //       after joining through channels. However, if day range queries become
-    //       common without channelId filtering, consider adding a separate index on day.
-    index("idx_event_channelId_day").on(table.channelId, table.day),
+    index("idx_event_subscriptionId_day").on(table.channelId, table.day),
 ]);
 
 

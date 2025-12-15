@@ -12,7 +12,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { createTmdbTvChannelIfNotExists, getTmdbShowData } from "./tmdb";
+import { createTmdbTvChannelIfNotExists, getTmdbShowData, searchTmdbShows } from "./tmdb";
 
 
 
@@ -110,12 +110,11 @@ const api = new Hono()
     
     const eventsRes = db
         .select({
-            // event: {
-            //     eventTitle: events.eventTitle,
-            //     day: events.day,
-            //     timestamp: events.timestamp,
-            // }
-            event: events
+            event: events,
+            channel: {
+                id: channels.id,
+                name: channels.name,
+            },
         })
         .from(events)
         .innerJoin(
@@ -135,10 +134,10 @@ const api = new Hono()
         )
         .all();
     
-    const eventsList = eventsRes.map(row => row.event);
+    // const eventsList = eventsRes.map(row => row.event);
     console.log("eventsRes", eventsRes);
     
-    return c.json(eventsList);
+    return c.json(eventsRes);
 })
 
 
@@ -154,6 +153,26 @@ const api = new Hono()
             session!.user.id
         );
         const body = c.req.valid("json");
+        
+        // check if subscription to channel already exists
+        const existingSubscription = await db
+            .select()
+            .from(subscriptionGroupsChannels)
+            .where(
+                and(
+                    eq(
+                        subscriptionGroupsChannels.subscriptionGroupId,
+                        subscriptionGroup.id
+                    ),
+                    eq(subscriptionGroupsChannels.channelId, `tmdb:${body.tmdbId}`)
+                )
+            )
+            .limit(1);
+        console.log("existingSubscription", existingSubscription);
+        if (existingSubscription.length > 0) {
+            // console.log("subscription already exists", existingSubscription[0]);
+            return c.json({ message: "Subscription already exists" }, 409);
+        }
 
         console.log("creating channel for tmdbId", body.tmdbId);
         const channelId = await createTmdbTvChannelIfNotExists(body.tmdbId);
@@ -180,6 +199,54 @@ const api = new Hono()
     const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
     await db.delete(subscriptionGroupsChannels).where(eq(subscriptionGroupsChannels.subscriptionGroupId, subscriptionGroup.id)).run();
     return c.json({ message: "All subscriptions cleared" });
+})
+
+// TODO: implement
+.delete("/me/unsubscribeTmdbShow", zValidator("json", z.object({ tmdbId: z.number() })), async (c) => {
+    const session = await getSessionData(c);
+    if (!session) {
+        return c.json({ error: "Not logged in" }, 401);
+    }
+    return c.json({ message: "Subscription removed" }); // TODO: implement
+})
+
+.delete(
+    "/me/unsubscribeChannel", 
+    zValidator("json", z.object({ channelId: z.string() })), 
+    async (c) => {
+        const session = await getSessionData(c);
+        if (!session) {
+            return c.json({ error: "Not logged in" }, 401);
+        }
+        const subscriptionGroup = await getUserSubscriptionGroup(session!.user.id);
+        await db
+            .delete(subscriptionGroupsChannels)
+            .where(
+                eq(
+                    subscriptionGroupsChannels.subscriptionGroupId,
+                    subscriptionGroup.id
+                )
+            )
+            .run();
+        return c.json({ message: "Subscription removed" }); // TODO: implement
+    }
+)
+
+
+.get("searchAvailableChannels", async (c) => {
+    const qp = c.req.query();
+    const r = z.object({
+        search: z.string(),
+    }).safeParse(qp);
+    if (!r.success) {
+        return c.json({ error: "Invalid query parameters, return start day to end day in format YYYY-MM-DD" }, 400);
+    }
+    const { search } = r.data;
+    
+    // start with tmdb
+    // start with just shows
+    const res = await searchTmdbShows(search);
+    return c.json(res);
 })
 
 

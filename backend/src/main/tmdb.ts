@@ -224,7 +224,7 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
     const areJustUpdating = existingChannel.length > 0;
     const newlyCreatedChannelId = db.transaction((tx) => {
         
-        const channelId = areJustUpdating ? existingChannel[0].id : crypto.randomUUID();
+        const channelId = areJustUpdating ? existingChannel[0].id : `tmdb:${tmdbId}`;//crypto.randomUUID();
         
         // add the show to the database
         if (areJustUpdating) {
@@ -295,7 +295,40 @@ export async function createTmdbTvChannelIfNotExists(tmdbId: number, ifExistsUpd
 // TODO: cron updating channel events
 
 
-
-
 // link: `https://www.google.com/search?q=${tmdbShowData.name}+justwatch&btnI=I'm+Feeling+Lucky`
 // link will be stored in seperate user specific table or generated on the fly
+
+
+export async function searchTmdbShows(query: string) {
+    const tmdbShowsData = await fetch(
+        `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(query)}`,
+        {
+            headers: {
+                'Authorization': `Bearer ${process.env.TMDB_API_READ_ACCESS_TOKEN}`
+            },
+        }
+    ).then(res => res.json());
+    const expectedReturnSchema = z.object({
+        page: z.number(),
+        results: z.array(z.object({
+            adult: z.boolean(),
+            backdrop_path: z.string().nullable(),
+            genre_ids: z.array(z.number()),
+            id: z.number(),
+            origin_country: z.array(z.string()),
+            original_language: z.string(),
+            original_name: z.string(),
+            overview: z.string(),
+            popularity: z.number(),
+            poster_path: z.string().nullable(),
+            first_air_date: z.string(),
+            name: z.string(),
+            vote_average: z.number(),
+            vote_count: z.number(),
+        })),
+        total_pages: z.number(),
+        total_results: z.number(),
+    })
+    const out = warnParse(tmdbShowsData, expectedReturnSchema);
+    return out;
+}
